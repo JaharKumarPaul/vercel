@@ -1,29 +1,33 @@
+import os
 import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
-# Load marks from JSON file
-with open("q-vercel-python.json", "r") as file:
-    data = json.load(file)  # Assuming data is a list of dictionaries
+# Load the JSON file
+try:
+    json_path = os.path.join(os.path.dirname(__file__), 'q-vercel-python.json')
+    with open(json_path) as file:
+        data = json.load(file)
+except FileNotFoundError:
+    data = {}  # Handle missing JSON file
 
 @app.route('/api', methods=['GET'])
 def get_marks():
-    # Get names from query parameters
-    names = request.args.getlist("name")
-    
-    # Find marks for the requested names
-    result = []
-    for name in names:
-        # Search the list for the requested name
-        student = next((entry for entry in data if entry["name"] == name), None)
-        result.append(student["marks"] if student else None)
-    
-    # Return as JSON response
-    return jsonify({"marks": result})
+    try:
+        # Get query parameters
+        names = request.args.getlist('name')
+        if not names:
+            return jsonify({"error": "Please provide at least one name"}), 400
+
+        # Fetch marks from data
+        marks = [data.get(name, "Name not found") for name in names]
+        return jsonify({"marks": marks})
+    except Exception as e:
+        # Catch any unexpected errors
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
